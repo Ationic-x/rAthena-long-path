@@ -22,6 +22,7 @@ extern const short diry[DIR_MAX]; ///lookup to know where will move to y accordi
 struct unit_data {
 	struct block_list *bl; ///link to owner object BL_PC|BL_MOB|BL_PET|BL_NPC|BL_HOM|BL_MER|BL_ELEM
 	struct walkpath_data walkpath;
+	struct long_walkpath_data longpath; // LongPath Nodes
 	struct skill_timerskill *skilltimerskill[MAX_SKILLTIMERSKILL];
 	std::vector<std::shared_ptr<s_skill_unit_group>> skillunits;
 	struct skill_unit_group_tickset skillunittick[MAX_SKILLUNITGROUPTICKSET];
@@ -106,6 +107,10 @@ enum e_unit_stop_walking {
 
 // PC, MOB, PET
 
+// Custom
+int unit_longwalktoxy( struct block_list *bl, short x, short y, unsigned char flag );
+//
+
 // Does walk action for unit
 int unit_walktoxy(struct block_list *bl, short x, short y, unsigned char flag);
 int unit_walktobl(struct block_list *bl, struct block_list *target, int range, unsigned char flag);
@@ -172,8 +177,8 @@ void unit_free_pc(map_session_data *sd);
 #define unit_remove_map(bl,clrtype) unit_remove_map_(bl,clrtype,__FILE__,__LINE__,__func__)
 int unit_remove_map_(struct block_list *bl, clr_type clrtype, const char* file, int line, const char* func);
 int unit_free(struct block_list *bl, clr_type clrtype);
-int unit_changetarget(block_list *bl,va_list ap);
-void unit_changetarget_sub(unit_data& ud, block_list& target);
+int unit_changeviewsize(struct block_list *bl,short size);
+int unit_changetarget(struct block_list *bl,va_list ap);
 
 // Shadow Scar
 void unit_addshadowscar(unit_data &ud, int interval);

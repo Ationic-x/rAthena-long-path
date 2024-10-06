@@ -507,7 +507,7 @@ static TIMER_FUNC(unit_walktoxy_timer)
 			ud->state.walk_script = false;
 
 			// Check if the unit was killed
-			if( status_isdead(*bl) ){
+			if( status_isdead(bl) ){
 				struct mob_data* md = BL_CAST(BL_MOB, bl);
 
 				if( md && !md->spawn ){
@@ -517,6 +517,29 @@ static TIMER_FUNC(unit_walktoxy_timer)
 				return 0;
 			}
 
+		}
+
+
+		// Clean and return 0 if there aren't more nodes
+		if(bl->x == ud->longpath.x[0] && bl->y == ud->longpath.y[0]) {
+			ud->longpath = { 0 };
+			return 0;
+		}
+
+		// Enter in the following block if long path is defined 
+		short new_x = ud->longpath.x[ud->longpath.path_pos];
+		short new_y = ud->longpath.y[ud->longpath.path_pos];
+		
+		if( new_x > 0 &&  new_y > 0){
+			ud->longpath.path_pos--;	
+			
+			// Go to the next node
+			ud->state.walk_easy = 0;
+			ud->to_x = new_x;
+			ud->to_y = new_y;
+			unit_stop_attack(bl);
+
+			return unit_walktoxy_sub(bl);
 		}
 	}
 
@@ -735,6 +758,7 @@ TIMER_FUNC(unit_delay_walktobl_timer){
  *	&2: Force walking (override can_move)
  *	&4: Delay walking for can_move
  *	&8: Search for an unoccupied cell and cancel if none available
+ *  &16: Search for long path
  * @return 1: Success 0: Fail or unit_walktoxy_sub()
  */
 int unit_walktoxy( struct block_list *bl, short x, short y, unsigned char flag)
@@ -751,14 +775,37 @@ int unit_walktoxy( struct block_list *bl, short x, short y, unsigned char flag)
 
 	walkpath_data wpd = { 0 };
 
-	if (!path_search(&wpd, bl->m, bl->x, bl->y, x, y, flag&1, CELL_CHKNOPASS)) // Count walk path cells
-		return 0;
+	// The only that don't enter to this method relate unit walk or npc walk
+	// is unit walk to bl, but this kind of behaviour is mainly for chasing stuff
+	// not of my interest currently
+	if (flag&16) {
 
-	// NPCs do not need to fulfill the following checks
-	if( bl->type != BL_NPC ){
-		if( wpd.path_len > battle_config.max_walk_path ){
+		long_walkpath_data lpd = { 0 };
+
+		if (!long_path_search(&lpd, bl->m, bl->x, bl->y, x, y, flag&16, CELL_CHKNOPASS))
 			return 0;
-		}
+
+		// Remplace values with the nearest node of the list
+		ud->longpath = lpd;
+
+		x = ud->longpath.x[ud->longpath.path_pos];
+		y = ud->longpath.y[ud->longpath.path_pos];
+		
+		ud->longpath.path_pos--;
+
+		// All this code inside the else is only required if you're using flag
+		// (specifically 4 and 2), but unit and npc walk always call this method
+		// with flag 0, better avoid call more times the A* algorithm.
+	} else {
+	
+		if (!path_search(&wpd, bl->m, bl->x, bl->y, x, y, flag&1, CELL_CHKNOPASS)) // Count walk path cells
+			return 0;
+
+		// NPCs do not need to fulfill the following checks
+		if( bl->type != BL_NPC ){
+			if( wpd.path_len > battle_config.max_walk_path ){
+				return 0;
+			}
 
 #ifdef OFFICIAL_WALKPATH
 		// Official number of walkable cells is 14 if and only if there is an obstacle between.
@@ -766,20 +813,21 @@ int unit_walktoxy( struct block_list *bl, short x, short y, unsigned char flag)
 			return 0;
 		}
 #endif
-	}
-
-	if (flag&4) {
-		unit_unattackable(bl);
-		unit_stop_attack(bl);
-
-		if(DIFF_TICK(ud->canmove_tick, gettick()) > 0 && DIFF_TICK(ud->canmove_tick, gettick()) < 2000) { // Delay walking command. [Skotlex]
-			add_timer(ud->canmove_tick+1, unit_delay_walktoxy_timer, bl->id, (x<<16)|(y&0xFFFF));
-			return 1;
 		}
-	}
 
-	if(!(flag&2) && (!status_bl_has_mode(bl,MD_CANMOVE) || !unit_can_move(bl)))
-		return 0;
+		if (flag&4) {
+			unit_unattackable(bl);
+			unit_stop_attack(bl);
+
+			if(DIFF_TICK(ud->canmove_tick, gettick()) > 0 && DIFF_TICK(ud->canmove_tick, gettick()) < 2000) { // Delay walking command. [Skotlex]
+				add_timer(ud->canmove_tick+1, unit_delay_walktoxy_timer, bl->id, (x<<16)|(y&0xFFFF));
+				return 1;
+			}
+		}
+
+		if(!(flag&2) && (!status_bl_has_mode(bl,MD_CANMOVE) || !unit_can_move(bl)))
+			return 0;
+	}
 
 	ud->state.walk_easy = flag&1;
 	ud->to_x = x;
@@ -1132,7 +1180,7 @@ bool unit_movepos(struct block_list *bl, short dst_x, short dst_y, int easy, boo
 
 			if( flag ) {
 				unit_movepos(pbl,sd->bl.x,sd->bl.y, 0, 0);
-				clif_slide(*pbl,pbl->x,pbl->y);
+				clif_slide(pbl,pbl->x,pbl->y);
 			}
 		}
 	}
@@ -1166,7 +1214,7 @@ bool unit_setdir(block_list *bl, uint8 dir, bool send_update)
 	}
 
 	if (send_update)
-		clif_changed_dir(*bl, AREA);
+		clif_changed_dir(bl, AREA);
 
 	return true;
 }
@@ -1639,9 +1687,9 @@ TIMER_FUNC(unit_resume_running){
 	TBL_PC *sd = map_id2sd(id);
 
 	if (sd && pc_isridingwug(sd))
-		clif_skill_nodamage(ud->bl,*ud->bl,RA_WUGDASH,ud->skill_lv,sc_start4(ud->bl,ud->bl,SC_WUGDASH,100,ud->skill_lv,unit_getdir(ud->bl),0,0,0));
+		clif_skill_nodamage(ud->bl,ud->bl,RA_WUGDASH,ud->skill_lv,sc_start4(ud->bl,ud->bl,SC_WUGDASH,100,ud->skill_lv,unit_getdir(ud->bl),0,0,0));
 	else
-		clif_skill_nodamage(ud->bl,*ud->bl,TK_RUN,ud->skill_lv,sc_start4(ud->bl,ud->bl,SC_RUN,100,ud->skill_lv,unit_getdir(ud->bl),0,0,0));
+		clif_skill_nodamage(ud->bl,ud->bl,TK_RUN,ud->skill_lv,sc_start4(ud->bl,ud->bl,SC_RUN,100,ud->skill_lv,unit_getdir(ud->bl),0,0,0));
 
 	if (sd)
 		clif_walkok(*sd);
@@ -1668,7 +1716,7 @@ int unit_set_walkdelay(struct block_list *bl, t_tick tick, t_tick delay, int typ
 
 	if (type) {
 		//Bosses can ignore skill induced walkdelay (but not damage induced)
-		if(bl->type == BL_MOB && status_has_mode(status_get_status_data(*bl),MD_STATUSIMMUNE))
+		if(bl->type == BL_MOB && status_has_mode(status_get_status_data(bl),MD_STATUSIMMUNE))
 			return 0;
 		//Make sure walk delay is not decreased
 		if (DIFF_TICK(ud->canmove_tick, tick+delay) > 0)
@@ -1724,6 +1772,7 @@ int unit_set_walkdelay(struct block_list *bl, t_tick tick, t_tick delay, int typ
 int unit_skilluse_id2(struct block_list *src, int target_id, uint16 skill_id, uint16 skill_lv, int casttime, int castcancel, bool ignore_range)
 {
 	struct unit_data *ud;
+	struct status_data *tstatus;
 	status_change *sc;
 	map_session_data *sd = nullptr;
 	struct block_list * target = nullptr;
@@ -1732,7 +1781,7 @@ int unit_skilluse_id2(struct block_list *src, int target_id, uint16 skill_id, ui
 
 	nullpo_ret(src);
 
-	if(status_isdead(*src))
+	if(status_isdead(src))
 		return 0; // Do not continue source is dead
 
 	sd = BL_CAST(BL_PC, src);
@@ -1872,7 +1921,7 @@ int unit_skilluse_id2(struct block_list *src, int target_id, uint16 skill_id, ui
 		return 0;
 	}
 
-	status_data* tstatus = status_get_status_data(*target);
+	tstatus = status_get_status_data(target);
 
 	// Record the status of the previous skill)
 	if(sd) {
@@ -2017,7 +2066,7 @@ int unit_skilluse_id2(struct block_list *src, int target_id, uint16 skill_id, ui
 		case ALL_RESURRECTION:
 			if(battle_check_undead(tstatus->race,tstatus->def_ele))
 				combo = 1;
-			else if (!status_isdead(*target))
+			else if (!status_isdead(target))
 				return 0; // Can't cast on non-dead characters.
 		break;
 		case MO_FINGEROFFENSIVE:
@@ -2239,9 +2288,9 @@ int unit_skilluse_pos(struct block_list *src, short skill_x, short skill_y, uint
 int unit_skilluse_pos2( struct block_list *src, short skill_x, short skill_y, uint16 skill_id, uint16 skill_lv, int casttime, int castcancel, bool ignore_range)
 {
 	map_session_data *sd = nullptr;
-	struct unit_data *ud = nullptr;
+	struct unit_data        *ud = nullptr;
 	status_change *sc;
-	struct block_list bl;
+	struct block_list    bl;
 	t_tick tick = gettick();
 	int range;
 
@@ -2250,7 +2299,7 @@ int unit_skilluse_pos2( struct block_list *src, short skill_x, short skill_y, ui
 	if (!src->prev)
 		return 0; // Not on the map
 
-	if(status_isdead(*src))
+	if(status_isdead(src))
 		return 0;
 
 	sd = BL_CAST(BL_PC, src);
@@ -2538,7 +2587,7 @@ int unit_attack(struct block_list *src,int target_id,int continuous)
 	nullpo_ret(ud = unit_bl2ud(src));
 
 	target = map_id2bl(target_id);
-	if( target == nullptr || status_isdead(*target) ) {
+	if( target == nullptr || status_isdead(target) ) {
 		unit_unattackable(src);
 		return 1;
 	}
@@ -2796,6 +2845,7 @@ static int unit_attack_timer_sub(struct block_list* src, int tid, t_tick tick)
 {
 	struct block_list *target;
 	struct unit_data *ud;
+	struct status_data *sstatus;
 	map_session_data *sd = nullptr;
 	struct mob_data *md = nullptr;
 	int range;
@@ -2816,7 +2866,7 @@ static int unit_attack_timer_sub(struct block_list* src, int tid, t_tick tick)
 	if( src == nullptr || src->prev == nullptr || target==nullptr || target->prev == nullptr )
 		return 0;
 
-	if( status_isdead(*src) || status_isdead(*target) ||
+	if( status_isdead(src) || status_isdead(target) ||
 			battle_check_target(src,target,BCT_ENEMY) <= 0 || !status_check_skilluse(src, target, 0, 0)
 #ifdef OFFICIAL_WALKPATH
 	   || !path_search_long(nullptr, src->m, src->x, src->y, target->x, target->y, CELL_CHKWALL)
@@ -2854,7 +2904,7 @@ static int unit_attack_timer_sub(struct block_list* src, int tid, t_tick tick)
 		return 1;
 	}
 
-	status_data* sstatus = status_get_status_data(*src);
+	sstatus = status_get_status_data(src);
 	range = sstatus->rhw.range;
 
 	if( (unit_is_walking(target) || ud->state.step_attack)
@@ -3130,42 +3180,30 @@ int unit_counttargeted(struct block_list* bl)
  * @param src Current target
  * @param target New target
  **/
-int unit_changetarget(block_list *bl, va_list ap) {
-	if (bl == nullptr)
-		return 1;
-	unit_data *ud = unit_bl2ud(bl);
-	block_list *src = va_arg(ap, block_list *);
-	block_list *target = va_arg(ap, block_list *);
+int unit_changetarget(struct block_list *bl, va_list ap) {
+	struct unit_data *ud = unit_bl2ud(bl);
+	struct block_list *src = va_arg(ap,struct block_list *);
+	struct block_list *target = va_arg(ap,struct block_list *);
 
-	if (ud == nullptr || src == nullptr || target == nullptr || ud->target == target->id)
+	if (!ud || !target || ud->target == target->id)
 		return 1;
-	if (ud->target <= 0 && ud->target_to <= 0)
+	if (!ud->target && !ud->target_to)
 		return 1;
 	if (ud->target != src->id && ud->target_to != src->id)
 		return 1;
 
-	unit_changetarget_sub(*ud, *target);
+	if (bl->type == BL_MOB)
+		(BL_CAST(BL_MOB,bl))->target_id = target->id;
+	if (ud->target_to)
+		ud->target_to = target->id;
+	else
+		ud->target_to = 0;
+	if (ud->skilltarget)
+		ud->skilltarget = target->id;
+	unit_set_target(ud, target->id);
 
 	//unit_attack(bl, target->id, ud->state.attack_continue);
 	return 0;
-}
-
-/**
- * Changes the target of a unit
- * @param ud: Unit data
- * @param target: New target data
- **/
-void unit_changetarget_sub(unit_data& ud, block_list& target) {
-	if (status_isdead(target))
-		return;
-
-	if (ud.bl->type == BL_MOB)
-		reinterpret_cast<mob_data*>(ud.bl)->target_id = target.id;
-	if (ud.target_to > 0)
-		ud.target_to = target.id;
-	if (ud.skilltarget > 0)
-		ud.skilltarget = target.id;
-	unit_set_target(&ud, target.id);
 }
 
 /**
@@ -3239,7 +3277,7 @@ int unit_remove_map_(struct block_list *bl, clr_type clrtype, const char* file, 
 			if(sd->chatID)
 				chat_leavechat(sd,0);
 
-			if(sd->trade_partner.id > 0)
+			if(sd->trade_partner)
 				trade_tradecancel(sd);
 
 			searchstore_close(*sd);
@@ -3363,6 +3401,7 @@ int unit_remove_map_(struct block_list *bl, clr_type clrtype, const char* file, 
 
 			if( !hd->homunculus.intimacy && !(hd->master && !hd->master->state.active) ) {
 				// If logging out, this is deleted on unit_free
+				clif_emotion(bl, ET_CRY);
 				clif_clearunit_area( *bl, clrtype );
 				map_delblock(bl);
 				unit_free(bl,CLR_OUTSIGHT);
@@ -3421,7 +3460,7 @@ int unit_remove_map_(struct block_list *bl, clr_type clrtype, const char* file, 
 			break;
 		case BL_MOB:
 			// /BL_MOB is handled by mob_dead unless the monster is not dead.
-			if (status_isdead(*bl)) {
+			if (status_isdead(bl)) {
 				map_delblock(bl);
 				break;
 			}
@@ -3531,7 +3570,7 @@ int unit_free(struct block_list *bl, clr_type clrtype)
 			map_session_data *sd = (map_session_data*)bl;
 			int i;
 
-			if( status_isdead(*bl) )
+			if( status_isdead(bl) )
 				pc_setrestartvalue(sd,2);
 
 			pc_delinvincibletimer(sd);

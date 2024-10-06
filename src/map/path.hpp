@@ -13,6 +13,7 @@ enum cell_chk : uint8;
 
 #define MAX_WALKPATH 32
 
+
 enum directions : int8 {
 	DIR_CENTER = -1,
 	DIR_NORTH = 0,
@@ -24,6 +25,13 @@ enum directions : int8 {
 	DIR_EAST = 6,
 	DIR_NORTHEAST = 7,
 	DIR_MAX
+};
+
+// Store all the revelant nodes in a long walk
+struct long_walkpath_data {
+	unsigned char path_pos;
+	short x[1024];
+	short y[1024];
 };
 
 struct walkpath_data {
@@ -61,6 +69,9 @@ bool path_search(struct walkpath_data *wpd,int16 m,int16 x0,int16 y0,int16 x1,in
 
 // tries to find a shootable path
 bool path_search_long(struct shootpath_data *spd,int16 m,int16 x0,int16 y0,int16 x1,int16 y1,cell_chk cell);
+
+// tries to find a long walkable path
+bool long_path_search(struct long_walkpath_data *wpd,int16 m,int16 x0,int16 y0,int16 x1,int16 y1,int flag,cell_chk cell);
 
 // distance related functions
 bool check_distance(int dx, int dy, int distance);
