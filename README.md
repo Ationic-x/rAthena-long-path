@@ -2,13 +2,14 @@
 The following project try to understand the [Rathena](https://github.com/rathena/rathena) pathfinding and the client pathfinding, at the same time provide solutions for the pathfiding issues/problems, the mods are made exclusively on files that may be affected to avoid overloading the project with "unnecessary" elements that may reduce the search among the scritps.
 
 # List of task
-This list can be updated in future, just said the current progressions and objectives.
-:white_check_mark: Add basic Long Path.
-:x: Complex Path (avoid walls more natural walk).
-:x: Flexible Path (improve the uses of dynamic sizes, more optimal).
-:x: Force Path (move npc to a destination even if no reach the goal).
-:x: Improve A* pathfinding (if is possible).
-:x: Bypass client limitation of 32 blocks of memory (this could be impossible with my knowledge).
+This list can be updated in future, simply mention the current progression and goals
+
+:white_check_mark: Add basic Long Path.<br>
+:x: Complex Path (avoid walls more natural walk).<br>
+:x: Flexible Path (improve the uses of dynamic sizes, more optimal).<br>
+:x: Force Path (move npc to a destination even if no reach the goal).<br>
+:x: Improve A* pathfinding (if is possible).<br>
+:x: Bypass client limitation of 32 blocks of memory (this could be impossible with my knowledge).<br>
 
 # Introduction
 
