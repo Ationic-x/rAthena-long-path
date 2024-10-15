@@ -13,5 +13,5 @@ This list can be updated in future, simply mention the current progression and g
 
 # Introduction
 
-The following document was developed in the earliest version of the code, and it superficially talk about the problem to provide an understanding or initiation, even so it is likely to have some errors due to my own outdated knowledge, but I still consider that it can help to understand the problem without enter in technicalities (for the other I recommend the wiki)
+The following document was developed in the earliest version of the code, and it superficially talk about the problem to provide an understanding or initiation, even so it is likely to have some errors due to my own outdated knowledge, but I still consider that it can help to understand the problem without enter in technicalities (for the other I recommend the [wiki](https://github.com/Ationic-x/rAthena-long-path/wiki))
 [Introduction DOC](https://docs.google.com/document/d/1zTTCrXhoVR3Kcsa2zmjRK_b-W27FsaBFRrKeLx8tqeg/edit?tab=t.0#heading=h.sn0eqp3u4fmd)
