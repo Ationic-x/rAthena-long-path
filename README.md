@@ -2,7 +2,7 @@
 The following project try to understand the [Rathena](https://github.com/rathena/rathena) pathfinding and the client pathfinding, at the same time provide solutions for the pathfiding issues/problems, the mods are made exclusively on files that may be affected to avoid overloading the project with "unnecessary" elements that may reduce the search among the scritps.
 
 # List of tasks
-This list can be updated in future, simply mention the current progression and goals
+This list can be updated in future, simply mention of the current progression and goals
 
 :white_check_mark: Add basic Long Path.<br>
 :x: Complex Path (avoid walls more natural walk).<br>
