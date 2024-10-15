@@ -1,7 +1,7 @@
 # rAthena-long-path
 The following project try to understand the [Rathena](https://github.com/rathena/rathena) pathfinding and the client pathfinding, at the same time provide solutions for the pathfiding issues/problems, the mods are made exclusively on files that may be affected to avoid overloading the project with "unnecessary" elements that may reduce the search among the scritps.
 
-# List of task
+# List of tasks
 This list can be updated in future, simply mention the current progression and goals
 
 :white_check_mark: Add basic Long Path.<br>
