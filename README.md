@@ -9,7 +9,7 @@ This list can be updated in future, simply mention the current progression and g
 :x: Flexible Path (improve the uses of dynamic sizes, more optimal).<br>
 :x: Force Path (move npc to a destination even if no reach the goal).<br>
 :x: Improve A* pathfinding (if is possible).<br>
-:x: Bypass client limitation of 32 blocks of memory (this could be impossible with my knowledge).<br>
+:x: Bypass client limitation of 32 blocks of memory (this could be impossible with my current knowledge).<br>
 
 # Introduction
 
